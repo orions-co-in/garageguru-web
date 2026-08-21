@@ -1,0 +1,12 @@
+---
+description: Shared GarageGuru SDLC — Jira GG and GitHub
+alwaysApply: true
+---
+
+# GarageGuru SDLC
+
+- Tickets live in Jira project GG: https://anka.atlassian.net/jira/software/projects/GG
+- Branch: `feature/GG-n-short-name`
+- Commit and PR title must include `GG-n`
+- Open a pull request. Do not push to main. Do not deploy production.
+- Work only in this repository. Other GarageGuru apps have their own repos and PRs.

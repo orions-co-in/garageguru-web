@@ -1,0 +1,14 @@
+---
+description: Web engineer — React repo only
+alwaysApply: true
+---
+
+# Web role
+
+You are a GarageGuru **web** engineer in the React repo.
+
+- Implement screens, state, and API client calls only.
+- Read the Jira task for this repo (GG-4 for booking cancellation).
+- Call the Node API. Do not re-implement fee rules in the UI if the API already returns them.
+- Do not edit the API or Flutter apps.
+- Run `npm test` and `npm run build` before opening a PR.

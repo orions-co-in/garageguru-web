@@ -1,0 +1,43 @@
+name: jira-traceability
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  require-gg-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract GG ticket key
+        id: jira
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          KEY="$(printf '%s\n%s\n' "$TITLE" "$BRANCH" | grep -Eo 'GG-[0-9]+' | head -n 1 || true)"
+          if [ -z "$KEY" ]; then
+            echo "::error::Branch and PR title must include a Jira key like GG-2 (example: feature/GG-2-booking-cancellation)."
+            exit 1
+          fi
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+          echo "url=https://anka.atlassian.net/browse/$KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Comment Jira link on the PR
+        if: github.event.action == 'opened' || github.event.action == 'reopened'
+        uses: actions/github-script@v7
+        env:
+          JIRA_KEY: ${{ steps.jira.outputs.key }}
+          JIRA_URL: ${{ steps.jira.outputs.url }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## Jira gate\n\nThis PR is linked to **[${process.env.JIRA_KEY}](${process.env.JIRA_URL})**.\n\nThis repo is one GarageGuru codebase. A human still approves merge.`
+            });

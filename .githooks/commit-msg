@@ -1,0 +1,6 @@
+#!/bin/sh
+# Require a GG-n Jira key in every commit message.
+msg=$(head -n 1 "$1")
+echo "$msg" | grep -Eq 'GG-[0-9]+' && exit 0
+echo "Commit message must include a Jira key, e.g. GG-2 add booking cancellation API"
+exit 1

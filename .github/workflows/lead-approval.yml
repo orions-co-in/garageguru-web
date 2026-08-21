@@ -1,0 +1,38 @@
+name: lead-approval
+
+# PPT: humans control PR merge. This check fails until a code owner (tech lead) approves.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lead-approval:
+    name: Lead approval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require an approving review from a code owner
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request.number;
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
+            const { data: reviews } = await github.rest.pulls.listReviews({ owner, repo, pull_number });
+            const leads = ['sameer320'];
+            const leadApproved = reviews.some((r) => (
+              r.state === 'APPROVED'
+              && leads.includes(r.user.login)
+              && r.user.login.toLowerCase() !== pr.user.login.toLowerCase()
+            ));
+            if (!leadApproved) {
+              core.setFailed('A tech lead in CODEOWNERS must approve this PR. The author cannot approve or merge their own change.');
+              return;
+            }
+            console.log('Lead approval present.');

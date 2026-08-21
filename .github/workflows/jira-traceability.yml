@@ -9,23 +9,36 @@ permissions:
   pull-requests: write
 
 jobs:
-  require-gg-key:
+  jira-key:
+    name: Jira key
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Extract GG ticket key
         id: jira
         env:
           TITLE: ${{ github.event.pull_request.title }}
           BRANCH: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref }}
         run: |
           set -euo pipefail
           KEY="$(printf '%s\n%s\n' "$TITLE" "$BRANCH" | grep -Eo 'GG-[0-9]+' | head -n 1 || true)"
           if [ -z "$KEY" ]; then
-            echo "::error::Branch and PR title must include a Jira key like GG-2 (example: feature/GG-2-booking-cancellation)."
+            echo "::error::Branch and PR title must include a Jira key like GG-2."
             exit 1
           fi
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
           echo "url=https://anka.atlassian.net/browse/$KEY" >> "$GITHUB_OUTPUT"
+          git log "origin/${BASE}..HEAD" --pretty=%s | while IFS= read -r msg; do
+            [ -z "$msg" ] && continue
+            echo "$msg" | grep -Eq 'GG-[0-9]+' || {
+              echo "::error::Commit message missing Jira key: $msg"
+              exit 1
+            }
+          done
 
       - name: Comment Jira link on the PR
         if: github.event.action == 'opened' || github.event.action == 'reopened'
@@ -39,5 +52,20 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `## Jira gate\n\nThis PR is linked to **[${process.env.JIRA_KEY}](${process.env.JIRA_URL})**.\n\nThis repo is one GarageGuru codebase. A human still approves merge.`
+              body: `## Jira gate\n\nLinked to **[${process.env.JIRA_KEY}](${process.env.JIRA_URL})**.\n\nAI may open this PR. A human still approves merge.`
             });
+
+      - name: Comment PR URL on the Jira ticket
+        if: ${{ secrets.JIRA_API_TOKEN != '' && (github.event.action == 'opened' || github.event.action == 'reopened') }}
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_KEY: ${{ steps.jira.outputs.key }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          test -n "$JIRA_EMAIL" || exit 0
+          curl -sS -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            "https://anka.atlassian.net/rest/api/2/issue/${JIRA_KEY}/comment" \
+            -d "{\"body\":\"GitHub PR opened in this repo: ${PR_URL}\"}"

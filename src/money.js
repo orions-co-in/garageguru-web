@@ -7,12 +7,14 @@ export function formatInr(paise) {
 }
 
 export function statusLabel(status) {
-  return {
-    pending: "Awaiting garage",
-    confirmed: "Bay reserved",
-    technician_en_route: "Tech en route",
-    in_progress: "In bay",
-    completed: "Closed",
-    cancelled: "Cancelled",
-  }[status] || status;
+  return (
+    {
+      pending: "Awaiting garage",
+      confirmed: "Bay reserved",
+      technician_en_route: "Tech en route",
+      in_progress: "In bay",
+      completed: "Closed",
+      cancelled: "Cancelled",
+    }[status] || status
+  );
 }

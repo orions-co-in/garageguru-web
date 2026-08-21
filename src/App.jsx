@@ -4,14 +4,19 @@ import { formatInr, statusLabel } from "./money.js";
 async function getJson(path) {
   const res = await fetch(path);
   const body = await res.json();
-  if (!res.ok) throw Object.assign(new Error(body.error || "request failed"), { body, status: res.status });
+  if (!res.ok)
+    throw Object.assign(new Error(body.error || "request failed"), { body, status: res.status });
   return body;
 }
 
 function slotCopy(iso) {
   const when = new Date(iso);
   const deltaH = (when.getTime() - Date.now()) / 36e5;
-  const time = when.toLocaleString("en-IN", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  const time = when.toLocaleString("en-IN", {
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   if (deltaH < 0) return `${time} · already passed`;
   if (deltaH < 1) return `${time} · ${Math.round(deltaH * 60)} min`;
   return `${time} · ${deltaH.toFixed(1)} h`;
@@ -35,10 +40,7 @@ export function App() {
     refresh().catch((err) => setError(err.message));
   }, []);
 
-  const selected = useMemo(
-    () => bookings.find((b) => b.id === active) || null,
-    [bookings, active],
-  );
+  const selected = useMemo(() => bookings.find((b) => b.id === active) || null, [bookings, active]);
 
   async function openCancel(id) {
     setError("");
@@ -76,15 +78,19 @@ export function App() {
         <p className="eyebrow">GG-2 · feature/GG-2-booking-cancellation</p>
         <h1>Job cards</h1>
         <p className="lede">
-          Cancel from the customer job card. Policy is shared: pending always free, confirmed inside 2 hours takes 50%,
-          en route and completed stay locked.
+          Cancel from the customer job card. Policy is shared: pending always free, confirmed inside
+          2 hours takes 50%, en route and completed stay locked.
         </p>
       </header>
 
       <div className="layout">
         <section className="board">
           {bookings.map((b) => (
-            <article key={b.id} className={`card status-${b.status}`} onClick={() => openCancel(b.id)}>
+            <article
+              key={b.id}
+              className={`card status-${b.status}`}
+              onClick={() => openCancel(b.id)}
+            >
               <div className="stripe" aria-hidden="true" />
               <div className="card-body">
                 <div className="card-top">
@@ -92,11 +98,16 @@ export function App() {
                   <span className={`stamp stamp-${b.status}`}>{statusLabel(b.status)}</span>
                 </div>
                 <h2>{b.service}</h2>
-                <p className="meta">{b.customer} · {b.garage}</p>
+                <p className="meta">
+                  {b.customer} · {b.garage}
+                </p>
                 <p className="meta">{slotCopy(b.slotStart)}</p>
                 <p className="amount">{formatInr(b.amountPaise)}</p>
                 {b.status === "cancelled" && (
-                  <p className="void">VOID · fee {formatInr(b.cancellationFeePaise)} · refund {formatInr(b.refundPaise)}</p>
+                  <p className="void">
+                    VOID · fee {formatInr(b.cancellationFeePaise)} · refund{" "}
+                    {formatInr(b.refundPaise)}
+                  </p>
                 )}
               </div>
               <aside className="stub">
@@ -115,19 +126,19 @@ export function App() {
               <p className="mono">{selected.id}</p>
               <p>{selected.service}</p>
               {preview?.allowed && preview.feePaise > 0 && (
-                <p className="warn">Late cutoff. 50% fee {formatInr(preview.feePaise)} will be kept.</p>
+                <p className="warn">
+                  Late cutoff. 50% fee {formatInr(preview.feePaise)} will be kept.
+                </p>
               )}
               {preview?.allowed && preview.feePaise === 0 && (
                 <p className="ok">No cancellation fee. Slot will be released.</p>
               )}
               {preview && !preview.allowed && selected.status !== "cancelled" && (
-                <p className="blocked">Not cancellable in this status. Technician / job already in motion or closed.</p>
+                <p className="blocked">
+                  Not cancellable in this status. Technician / job already in motion or closed.
+                </p>
               )}
-              <button
-                type="button"
-                disabled={busy || !preview?.allowed}
-                onClick={confirmCancel}
-              >
+              <button type="button" disabled={busy || !preview?.allowed} onClick={confirmCancel}>
                 {busy ? "Cancelling…" : "Confirm cancel"}
               </button>
             </>

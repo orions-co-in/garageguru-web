@@ -1,0 +1,36 @@
+name: staging-gate
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  staging-readiness:
+    name: Staging readiness
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record staging candidate
+        run: |
+          echo "CI passed and PR merged to main."
+          echo "This is a staging candidate only. GCP deploy is not enabled yet."
+          echo "Production deploy, rollback, and secrets stay a human gate."
+
+      - name: Comment merge on Jira
+        if: ${{ secrets.JIRA_API_TOKEN != '' && github.event.pull_request.merged == true }}
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          TITLE: ${{ github.event.pull_request.title }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          KEY="$(printf '%s\n%s\n' "$TITLE" "$BRANCH" | grep -Eo 'GG-[0-9]+' | head -n 1 || true)"
+          test -n "$KEY" && test -n "$JIRA_EMAIL" || exit 0
+          curl -sS -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            "https://anka.atlassian.net/rest/api/2/issue/${KEY}/comment" \
+            -d "{\"body\":\"PR merged to main (staging candidate): ${PR_URL}. Production still needs human approval.\"}"

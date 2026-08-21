@@ -5,6 +5,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Lint
@@ -17,6 +21,18 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
 
   unit-tests:
     name: Unit tests
@@ -53,3 +69,17 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm audit --audit-level=high
+
+  quality-summary:
+    name: Quality gates
+    if: always()
+    needs: [lint, format, unit-tests, build, security]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every gate
+        run: |
+          test "${{ needs.lint.result }}" = "success"
+          test "${{ needs.format.result }}" = "success"
+          test "${{ needs.unit-tests.result }}" = "success"
+          test "${{ needs.build.result }}" = "success"
+          test "${{ needs.security.result }}" = "success"

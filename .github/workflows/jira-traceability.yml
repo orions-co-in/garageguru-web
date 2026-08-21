@@ -56,14 +56,17 @@ jobs:
             });
 
       - name: Comment PR URL on the Jira ticket
-        if: ${{ secrets.JIRA_API_TOKEN != '' && (github.event.action == 'opened' || github.event.action == 'reopened') }}
+        if: github.event.action == 'opened' || github.event.action == 'reopened'
         env:
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           JIRA_KEY: ${{ steps.jira.outputs.key }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
-          test -n "$JIRA_EMAIL" || exit 0
+          if [ -z "$JIRA_API_TOKEN" ] || [ -z "$JIRA_EMAIL" ]; then
+            echo "Jira secrets not set; skip ticket comment"
+            exit 0
+          fi
           curl -sS -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
             -X POST \
             -H "Content-Type: application/json" \
